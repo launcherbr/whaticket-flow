@@ -9,14 +9,25 @@
 #######################################
 system_create_user() {
   print_banner
-  printf "${WHITE} 💻 Agora, vamos criar o usuário para a nova Instância...${GRAY_LIGHT}"
+  printf "${WHITE} 💻 Agora, vamos criar o usuário para a instancia...${GRAY_LIGHT}"
   printf "\n\n"
 
   sleep 2
 
   sudo su - root <<EOF
-  useradd -m -p $(openssl passwd -crypt ${mysql_root_password}) -s /bin/bash -G sudo deploy
-  usermod -aG sudo deploy
+  # Check if user already exists
+  if id "deploy" &>/dev/null; then
+    echo "User deploy already exists"
+  else
+    # Create user with home directory and proper shell
+    useradd -m -s /bin/bash deploy
+    # Add to sudo group
+    usermod -aG sudo deploy
+    # Set password
+    echo "deploy:${mysql_root_password}" | chpasswd
+    # Ensure sudo works without password
+    echo "deploy ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers.d/deploy
+  fi
 EOF
 
   sleep 2
