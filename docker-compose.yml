@@ -1,0 +1,82 @@
+version: "3.8"
+services:
+  backend:
+    build:
+      context: ./backend
+      args:
+        BUILD_DATE: ${BUILD_DATE}
+        GIT_COMMIT: ${GIT_COMMIT}
+        BACKEND_VERSION: ${BACKEND_VERSION}
+    container_name: whaticket-backend
+    restart: always
+    environment:
+      NODE_ENV: production
+      DB_DIALECT: postgres
+      DB_HOST: postgres         # nome do serviço na rede Docker, ajuste se o nome do container do banco for diferente
+      DB_PORT: 5432
+      DB_NAME: whaticket        # nome do banco, já criado
+      DB_USER: postgres         # usuário padrão, ajuste conforme sua configuração
+      DB_PASS: efe487b6a861100fb704ad9f5c160cb8 # senha igual à do seu banco
+      TZ: America/Sao_Paulo
+      FRONTEND_URL: ${FRONTEND_URL:-https://chats.nobreluminarias.com.br}
+      BACKEND_URL: ${BACKEND_URL:-https://chats.nobreluminarias.com.br}
+      REDIS_URI: redis://redis:6379/0
+      REDIS_URI_ACK: redis://redis:6379/0
+      BULL_USER: admin
+      BULL_PASS: admin
+      JWT_SECRET: supersecret
+      JWT_REFRESH_SECRET: supersecretrefresh
+      SESSIONS_DRIVER: fs
+      SESSIONS_DIR: private/sessions
+      # Configurações de validação WhatsApp (REVERTIDO AO ORIGINAL)
+      CONTACT_FILTER_ASYNC_VALIDATION: "false"
+      CONTACT_VALIDATION_BATCH_SIZE: "50"
+      CONTACT_FILTER_DIRECT_SQL: "false"
+      CONTACT_FILTER_VALIDATE_WHATSAPP: "true"
+      CONTACT_FILTER_INSERT_CHUNK_SIZE: "1000"
+      # WhatsApp Business API (Meta) - Configurações Globais
+      WABA_WEBHOOK_VERIFY_TOKEN: ${WABA_WEBHOOK_VERIFY_TOKEN:-602536nblumi2025}
+      WABA_API_VERSION: ${WABA_API_VERSION:-v18.0}
+    networks:
+      - nobreluminarias
+    ports:
+      - "8080:8080"
+    volumes:
+      # Persistir apenas uploads e arquivos públicos, sem sobrescrever a aplicação
+      - backend-public:/app/public
+      # Persistir arquivos privados (inclui sessões do Baileys)
+      - backend-private:/app/private
+
+  frontend:
+    build: ./frontend
+    container_name: whaticket-frontend
+    restart: always
+    depends_on:
+      - backend
+    ports:
+      - "80:80"
+    networks:
+      - nobreluminarias
+    volumes:
+      - ./frontend:/app
+
+  redis:
+    image: redis:6.2-alpine
+    container_name: whaticket-redis
+    restart: always
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      - "6379:6379"
+    networks:
+      - nobreluminarias
+    volumes:
+      - redis-data:/data
+
+networks:
+  nobreluminarias:
+    external: true
+
+volumes:
+  redis-data:
+  backend-public:
+  backend-private:
